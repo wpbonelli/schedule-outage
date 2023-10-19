@@ -1,0 +1,83 @@
+name: Schedule outage
+description: Disable an action or workflow randomly or periodically
+inputs:
+  schedule:
+    description: Cron expression for periodic outages
+    required: false
+  duration:
+    description: Duration of scheduled outage (hours)
+    required: false
+    default: 1
+  probability:
+    description: Probability of random outages (0-1)
+    required: false
+  message:
+    description: Message to display when disabled
+    required: false
+    default: "Action or workflow disabled"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Install croniter
+      id: install-croniter
+      continue-on-error: true
+      shell: bash
+      run: pip install croniter
+
+    - name: Check schedule
+      id: check-schedule
+      shell: python
+      run: |
+        from os import environ
+        from sys import exit
+        
+        # if no schedule, nothing to do
+        if "${{ inputs.schedule }}" == "":
+          open(environ["GITHUB_OUTPUT"], "a").write(f"active=true")
+          exit()
+
+        # abort if croniter install failed
+        try:
+          from croniter import croniter
+        except:
+          print("Failed to import croniter, aborting scheduled outage")
+          exit(1)
+        
+        # check if outage is active
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        iter = croniter("${{ inputs.schedule }}", now)
+        prev = iter.get_prev(datetime)
+        duration = timedelta(hours=${{ inputs.duration }})
+        active = prev + duration > now
+        print(f"{'Active' if active else 'Last'} scheduled outage: {prev} - {prev + duration}")
+        open(environ["GITHUB_OUTPUT"], "a").write(f"active={str(active).lower()}")
+    
+    - name: Check probability
+      id: check-probability
+      shell: python
+      run: |
+        from os import environ
+        from random import random
+        if "${{ inputs.probability }}" == "":
+          prob = 1
+        else:
+          prob = float("${{ inputs.probability }}")
+        if prob < 0 or prob > 1:
+          print("Probability must be between 0 and 1 (inclusive)")
+          exit(1)
+        active = random() < prob
+        if active:
+          print(f"Random outage activated (prob. {prob})")
+        open(environ["GITHUB_OUTPUT"], "a").write(f"active={str(active).lower()}")
+    
+    - name: Disable
+      if: steps.check-schedule.outputs.active == 'true' && steps.check-probability.outputs.active == 'true'
+      shell: bash
+      run: |
+        echo "${{ inputs.message }}"
+        exit 1

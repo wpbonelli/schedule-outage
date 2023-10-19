@@ -1,0 +1,79 @@
+name: CI
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+jobs:
+  test_scheduled:
+    name: Test scheduled outages
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, macos-13, windows-2019, windows-2022 ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.8' 
+      - id: time
+        shell: python
+        run: |
+          from datetime import datetime
+          from os import environ
+          now = datetime.now()
+          with open(environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"hour={now.hour}\n")
+            f.write(f"minute={now.minute}\n")
+      - id: cron
+        shell: bash
+        run: echo "expr=${{ steps.time.outputs.minute }} ${{ steps.time.outputs.hour }} * * *" >> $GITHUB_OUTPUT
+      # expect no outage
+      - id: test0
+        uses: ./
+        continue-on-error: true
+        with:
+          schedule: '${{ steps.cron.outputs.expr }}'
+          duration: 0
+      - shell: python
+        run: assert "${{ steps.test0.outcome }}" == "success"
+      # expect outage
+      - id: test1
+        uses: ./
+        continue-on-error: true
+        with:
+          schedule: '${{ steps.cron.outputs.expr }}'
+          duration: 1
+      - shell: python
+        run: assert "${{ steps.test1.outcome }}" == "failure"
+      
+  test_random:
+    name: Test random outages
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, macos-13, windows-2019, windows-2022 ]
+    steps:
+      - uses: actions/checkout@v3
+      # expect no outage
+      - id: test0
+        uses: ./
+        with:
+          probability: 0
+      - shell: python
+        run: assert "${{ steps.test0.outcome }}" == "success"
+      # expect outage
+      - id: test1
+        uses: ./
+        continue-on-error: true
+        with:
+          probability: 1
+      - shell: python
+        run: assert "${{ steps.test1.outcome }}" == "failure"
