@@ -33,7 +33,7 @@ Useful e.g. to signal deprecation, or (if your action calls a service you contro
 - uses: wpbonelli/schedule-outage@v1
   with:
     schedule: '0 0 * * 0'
-    duration: '1h'
+    duration: 1
     message: 'Down for maintenance, back in 1 hour'
 ```
 
