@@ -48,8 +48,12 @@ Useful e.g. to signal deprecation, or (if your action calls a service you contro
 
 ## Notes
 
-* if `duration` is provided without `schedule`, it will be ignored
+* either `schedule` or `probability` must be provided
+
+* if `probability` is provided without `schedule`, the outage occurs probabilistically at every run
 
 * `schedule` and `probability` can be used together &mdash; if both are provided, an outage occurs probabilistically at the scheduled times
 
-* the action installs [`croniter`](https://github.com/kiorky/croniter) if `schedule` is provided &mdash; if pip install fails, it aborts without failing the workflow
+* if `duration` is provided without `schedule`, it will be ignored
+
+* if `schedule` is provided, [`croniter`](https://github.com/kiorky/croniter) is used to parse the cron expression &mdash; if pip install fails, the action aborts without failing the workflow

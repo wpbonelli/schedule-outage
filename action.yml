@@ -5,14 +5,14 @@ inputs:
     description: Cron expression for periodic outages
     required: false
   duration:
-    description: Duration of scheduled outage (hours)
+    description: Duration of outage (hours)
     required: false
     default: 1
   probability:
-    description: Probability of random outages (0-1)
+    description: Probability of outage
     required: false
   message:
-    description: Message to display when disabled
+    description: Message to display
     required: false
     default: "Action or workflow disabled"
 runs:
